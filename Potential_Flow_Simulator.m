@@ -1,4 +1,4 @@
-function potentialFlowPlot = panelCode(angleofA, airfoil)
+function potentialFlowPlot = panelCode(airfoil,aoa)
 
 % inputs: angle of attack, airfoil, (flow velocity)
 % outputs: potential flow figure
@@ -10,25 +10,12 @@ xycell = textscan(fid, '%f %f','headerlines', 1);
 xy=cell2mat(xycell);
 fclose(fid);
 
-%% Ignore
-
-handles.ExtraFile=1;
-handles.isccm=0;
-
-handles.ExtraFile_1=1;
-handles.isccm_1=0;
-handles.isrun=0;
-handles.isnote=0;
 
 %% RUN
 
-% creating for loop, running through iterations of the angle of attack
 U = 2;
 
-for i = 0:0.1:angleofA
-    aoa=i*pi/180;
-end
-
+aoa=aoa*pi/180;
 
 x=xy(:,1);
 y=xy(:,2);
@@ -86,7 +73,7 @@ ny=tx;	% nx1
 xT=x*cos(aoa)+y*sin(aoa);
 yT=-x*sin(aoa)+y*cos(aoa);
 
-handles.maxT=max(xT);
+maxT=max(xT);
 
         hold on
 box on
@@ -156,7 +143,7 @@ T=[sTij vT];    % nx(n+1)
 
 Mnp1_row=T(t,:)+T((t+1),:); % 1x(n+1)
 
-M=[N;Mnp1_row];   % (n+1)x(n+1)
+M=[N;Mnp1_row]   % (n+1)x(n+1)
 
 Ux=U.*cos(aoa);   % 1x1
 Uy=U.*sin(aoa);   % 1x1
@@ -164,9 +151,9 @@ Uy=U.*sin(aoa);   % 1x1
 Bi=-(Ux.*nx+Uy.*ny);    % nx1
 Bnp1=-(Ux.*(tx(t)+tx(t+1))+Uy.*(ty(t)+ty(t+1)));    % 1x1
 
-B=[Bi;Bnp1];    % (n+1)x1
+B=[Bi;Bnp1]    % (n+1)x1
 
-A=M^-1.*B;   % (n+1)x1
+A=M.^-1.*B   % (n+1)x1
 
 vni=N*A+(Ux.*nx+Uy.*ny);    % nx1 (=0)
 vti=T*A+(Ux.*tx+Uy.*ty);    % nx1 (!=0)
@@ -177,7 +164,6 @@ L=1.225*U*TotalGamma;
 Cpi=1-(vti./U).^2;  % nx1
 
 cL=L/(0.5*1.225*(U^2)*c);
-set(handles.cl_placeholder,'String',['cL = ' num2str( round(cL*1e5)/1e5 )])
 
 theta_i=atan(ty./tx);
 
@@ -191,12 +177,10 @@ R_i=s./(2.*sin(Psi_i./2));
 xxcT=xxc*cos(aoa)+yyc*sin(aoa);
 yycT=-xxc*sin(aoa)+yyc*cos(aoa);
 
-handles.VP2=zeros(1,n);
-handles.Vaoa=aoa;
+VP2=zeros(1,n);
+Vaoa=aoa;
 
     for j=1:n
-        figure(finished)
-        figure(handles.figure1)
         
         dxij_jH=repmat(xxc(:,j),1,n)-repmat(xc',n,1);	% nxn
         dyij_jH=repmat(yyc(:,j),1,n)-repmat(yc',n,1);  % nxn
@@ -225,10 +209,10 @@ handles.Vaoa=aoa;
         NH=[sNijH vNH];    % nx(n+1)
         TH=[sTijH vTH];    % nx(n+1)
 
-        vniH=NH*A+Ux.*nx+Uy.*ny; % nx1
-        vtiH=TH*A+Ux.*tx+Uy.*ty; % nx1
+        vniH=NH*A+Ux.*nx+Uy.*ny % nx1
+        vtiH=TH*A+Ux.*tx+Uy.*ty % nx1
 
-        vx(:,j)=vniH.*nx+vtiH.*tx;%+Ux;
+        vx(:,j)=vniH.*nx+vtiH.*tx%+Ux;
         vy(:,j)=vniH.*ny+vtiH.*ty;%+Uy;
     end
      
