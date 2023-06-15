@@ -1,12 +1,23 @@
-function potentialFlowPlot = panelCode(airfoil,velocity,aoa)
+function potentialFlowPlot = panelCode(airfoil,aoa,velocity)
 
-% Inputs: Airfoil Data, Angle of Attack (degrees), (flow velocity)
+% Inputs: Airfoil Data, Angle of Attack (degrees), Flow velocity (m/s)
 % Outputs: Potential Flow Vector Figure
 
 %% Errors
+% Angle of Attack and Flow Velocity are optional parameters. If not
+% specified then default is:
+% aoa = 0º
+% flow velocity = 2m/s
 
-if ~exist(aoa) == true
-    aoa = 0
+if nargin < 2
+    velocity = 2;
+    aoa = 0;
+    fprintf("Default aoa of 0º and velocity of 2m/s used.")
+end
+
+if nargin <3
+    velocity = 2;
+    fprintf("Default velocity of 2m/s used.")
 end
 
 %% Setup
@@ -16,31 +27,38 @@ fid = fopen(airfoil);
 xycell = textscan(fid, '%f %f','headerlines', 1); % Skipping titles and text
 xy=cell2mat(xycell); % 
 fclose(fid);
+bodyname = "NACA Airfoil";
 
 
 %% RUN
 
-U = velocity % free stream velocity
+U = velocity; % free stream velocity
 aoa=aoa*pi/180; %Converting angle of attack to radians. 
 
-x=xy(:,1)
-y=xy(:,2)
+% Separating coordinates into x and y columns.
+x=xy(:,1);
+y=xy(:,2);
 
+% Delete last data point (Redundant leading edge data point)
 x(end)=[];
 y(end)=[];
 
-
+% Find leading edge index
 LE=find(x==min(abs(x)));
 
+% Change order of x and y coords (LE->TE->LE) and scale 
 x=[flipud(x(1:LE)); flipud(x(LE:end))]*100; %flipud --> reverses array (eg. 123 --> 321)
 y=[flipud(y(1:LE)); flipud(y(LE:end))]*100;
 
+% Delete last data point (Redundant leading edge data point)
 x(end)=[];
 y(end)=[];
 
-
+% Number of xy data point pairs
 n=length(x);		% 1x1
+% Find index of trailing edge
 t=find(x==max(x));
+% Chord Length
 c=x(t);
 
 xL=[x(n) ; x(1:(n-1))];	% nx1
@@ -49,20 +67,20 @@ yL=[y(n) ; y(1:(n-1))];	% nx1
 xc=(xL+x)./2;		% nx1
 yc=(yL+y)./2;
 
+Cpi=zeros(length(xc),33);
 
 
-%% Features of Given Airfoil
+%% Airflow Vector
+
+%############################################## Vecotor Plot
 
 for i=1:n
     if i==n
         ip1=1;
     else
         ip1=i+1;
-    end
-   
+    end  
 end
-
-%############################################## Vecotor Plot
 
 xL=[x(n) ; x(1:(n-1))];	% nx1
 yL=[y(n) ; y(1:(n-1))];	% nx1
@@ -77,14 +95,25 @@ ty=(y-yL)./s;	% nx1
 nx=-ty;	% nx1
 ny=tx;	% nx1
 
-
 xT=x*cos(aoa)+y*sin(aoa);
 yT=-x*sin(aoa)+y*cos(aoa);
 
-left=-round(3*n);
-right=100+round(3*n);
-bottom=min(yT)-round(2*n);
-top=max(yT)+round(2*n);
+maxT=max(xT);
+
+left=-round(2.5*n);
+right=100+round(2.5*n);
+bottom=min(yT)-round(1.2*n);
+top=max(yT)+round(1.2*n);
+
+Outer=[left right+4 bottom top];
+
+if max(yT)>40 | min(yT)<-40
+    Focussed=[-80  150  min(yT)-40   max(yT)+30];
+else
+    Focussed=[-32.5679  136.5679  min(yT)-40   max(yT)+30];
+end
+
+axis(Outer);
 
 Ntheta_i=atan2(ny,nx);
 Ntheta_j=[Ntheta_i(2:n);Ntheta_i(1)];
@@ -165,6 +194,7 @@ L=1.225*U*TotalGamma;
 Cpi=1-(vti./U).^2;  % nx1
 
 cL=L/(0.5*1.225*(U^2)*c);
+cl_placeholder = (['cL = ' num2str( round(cL*1e5)/1e5 )]);
 
 theta_i=atan(ty./tx);
 
@@ -178,6 +208,8 @@ R_i=s./(2.*sin(Psi_i./2));
 xxcT=xxc*cos(aoa)+yyc*sin(aoa);
 yycT=-xxc*sin(aoa)+yyc*cos(aoa);
 
+VP2=zeros(1,n);
+Vaoa=aoa;
 
 for j=1:n
     
@@ -225,7 +257,7 @@ for j=1:n
     end
             
        % %------------------------------ Emptying the velocities inside the airfoil
-        if xxcT(2,j)>=min(xT) & xxcT(2,j)<=max(xT) % coloums have same values
+        if xxcT(2,j)>=min(xT) & xxcT(2,j)<=max(xT) % columns have same values
 
             lowdiff=abs( round(xlowT*100)-round(xxcT(2,j)*100) );
             updiff=abs( round(xupT*100)-round(xxcT(2,j)*100) )  ;
@@ -260,7 +292,8 @@ for j=1:n
 %         ------------------------------ Emptying the velocities inside the airfoil
 
 %% Plotting
-    
+  
+    subplot(2,1,1)
     hold on
 
         vxT(:,j)=vx(:,j)*cos(aoa)+vy(:,j)*sin(aoa);
@@ -273,13 +306,49 @@ for j=1:n
             VP2(j)=quiver(xxcT(:,j),yycT(:,j),vxT(:,j),vyT(:,j),8/n,'b'); % vertical line vectors
         end
        
-    
+end
+       % These quiver plots dont work, error: The size of X must match the size of U or the number of columns of U.
        %VP4=quiver(xxcT,yycT,vxT,vyT,1.25,'b'); %
     
        %VP4=quiver(xxcT,yycT,vxT,vyT,0.8,'b'); %
 
        VP3(:,:)=fill([xT;xT(1)],[yT;yT(1)],[0.5020         0    0.2510]);
 
+       axis(Focussed)
        zoom reset
+       
+%% Panel Plot
+
+subplot(2,1,2)
+
+handles.AF_F1=zeros(n,1);
+
+handles.count_even=0;
+handles.count_odd=0;
+
+for i=1:n
+    if i==n
+        ip1=1;
+    else
+        ip1=i+1;
+    end
+    
+    if mod(i,2)==0
+        handles.AF_F1(i)=plot([x(i) x(ip1)],[y(i), y(ip1)],'Color','b','LineWidth',2);
+        handles.count_even=handles.count_even+1;
+    else
+        handles.AF_F1(i)=plot([x(i) x(ip1)],[y(i), y(ip1)],'Color',[1 1 1],'LineWidth',4);
+        handles.count_odd=handles.count_odd+1;
+    end
 end
+
+AF_F2=plot(xc,yc,'rO','LineWidth',2,'MarkerEdgeColor','r','MarkerFaceColor','g','MarkerSize',5);
+
+axis equal
+grid on
+AF_F3(1)=title(['Profile and Mesh Details of ',bodyname ]);
+AF_F3(2)=xlabel('X \rightarrow');
+AF_F3(3)=ylabel('Y \rightarrow');
+
+
 
