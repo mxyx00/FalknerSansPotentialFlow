@@ -27,8 +27,7 @@ fid = fopen(airfoil);
 xycell = textscan(fid, '%f %f','headerlines', 1); % Skipping titles and text
 xy=cell2mat(xycell); % 
 fclose(fid);
-bodyname = "NACA Airfoil";
-
+bodyname=textread(airfoil,'%s',1,'delimiter','\n');
 
 %% RUN
 
@@ -112,8 +111,6 @@ if max(yT)>40 | min(yT)<-40
 else
     Focussed=[-32.5679  136.5679  min(yT)-40   max(yT)+30];
 end
-
-axis(Outer);
 
 Ntheta_i=atan2(ny,nx);
 Ntheta_j=[Ntheta_i(2:n);Ntheta_i(1)];
@@ -293,8 +290,17 @@ for j=1:n
 
 %% Plotting
   
-    subplot(2,1,1)
+    subplot(2,1,2)
     hold on
+
+VP1(1)=title(['Vector Plot of ' bodyname]);
+VP1(2)=xlabel('X \rightarrow');
+VP1(3)=ylabel('Y \rightarrow');
+
+VP1(4)=plot([left right+4 right+4 left ,left], [bottom bottom  top top ,bottom],'r','LineWidth',3);
+
+
+axis(Outer);
 
         vxT(:,j)=vx(:,j)*cos(aoa)+vy(:,j)*sin(aoa);
         vyT(:,j)=-vx(:,j)*sin(aoa)+vy(:,j)*cos(aoa);
@@ -319,12 +325,13 @@ end
        
 %% Panel Plot
 
-subplot(2,1,2)
+subplot(2,1,1)
+hold on
 
-handles.AF_F1=zeros(n,1);
+AF_F1=zeros(n,1);
 
-handles.count_even=0;
-handles.count_odd=0;
+count_even=0;
+count_odd=0;
 
 for i=1:n
     if i==n
@@ -334,11 +341,11 @@ for i=1:n
     end
     
     if mod(i,2)==0
-        handles.AF_F1(i)=plot([x(i) x(ip1)],[y(i), y(ip1)],'Color','b','LineWidth',2);
-        handles.count_even=handles.count_even+1;
+        AF_F1(i)=plot([x(i) x(ip1)],[y(i), y(ip1)],'Color','b','LineWidth',2);
+        count_even=count_even+1;
     else
-        handles.AF_F1(i)=plot([x(i) x(ip1)],[y(i), y(ip1)],'Color',[1 1 1],'LineWidth',4);
-        handles.count_odd=handles.count_odd+1;
+        AF_F1(i)=plot([x(i) x(ip1)],[y(i), y(ip1)],'Color',[1 1 1],'LineWidth',4);
+        count_odd=count_odd+1;
     end
 end
 
@@ -349,6 +356,9 @@ grid on
 AF_F3(1)=title(['Profile and Mesh Details of ',bodyname ]);
 AF_F3(2)=xlabel('X \rightarrow');
 AF_F3(3)=ylabel('Y \rightarrow');
+set(gca,'color','#D3D3D3')
 
+%% Plot Formatting and Etc. 
 
-
+leg3=['Collocation Points ( ' num2str(length(xc)) ' )'];
+legend([AF_F1(1),AF_F1(2),AF_F2],'Panels','Panels',leg3,'Location','NorthEast');
