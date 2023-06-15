@@ -290,7 +290,7 @@ for j=1:n
 
 %% Plotting
   
-    subplot(2,1,2)
+    subplot(3,1,2)
     hold on
 
 VP1(1)=title(['Vector Plot of ' bodyname]);
@@ -325,7 +325,7 @@ end
        
 %% Panel Plot
 
-subplot(2,1,1)
+subplot(3,1,1)
 hold on
 
 AF_F1=zeros(n,1);
@@ -351,12 +351,103 @@ end
 
 AF_F2=plot(xc,yc,'rO','LineWidth',2,'MarkerEdgeColor','r','MarkerFaceColor','g','MarkerSize',5);
 
+
 axis equal
 grid on
 AF_F3(1)=title(['Profile and Mesh Details of ',bodyname ]);
 AF_F3(2)=xlabel('X \rightarrow');
 AF_F3(3)=ylabel('Y \rightarrow');
 set(gca,'color','#D3D3D3')
+
+%% Pressure
+
+subplot(3,1,3)
+
+
+
+    dxij_j=repmat(xc,1,n)-repmat(xc',n,1);	% nxn
+    dyij_j=repmat(yc,1,n)-repmat(yc',n,1);  % nxn
+
+    xij_j=dxij_j.*(repmat(tx',n,1))+dyij_j.*(repmat(ty',n,1));	% nxn
+    yij_j=dxij_j.*(repmat(nx',n,1))+dyij_j.*(repmat(ny',n,1));	% nxn
+
+    ss=repmat(s',n,1);	% nxn
+
+    vxij_j=0.5.*(log((xij_j+0.5.*ss).^2+yij_j.^2)-log((xij_j-0.5.*ss).^2+yij_j.^2));    % nxn
+    vyij_j=atan((xij_j+0.5.*ss)./yij_j)-atan((xij_j-0.5.*ss)./yij_j);   % nxn
+
+    nitj=(nx*tx')+(ny*ty'); % nxn
+    ninj=(nx*nx')+(ny*ny'); % nxn
+    titj=(tx*tx')+(ty*ty'); % nxn
+    tinj=(tx*nx')+(ty*ny'); % nxn
+
+    sNij=vxij_j.*nitj+vyij_j.*ninj; % nxn
+    sTij=vxij_j.*titj+vyij_j.*tinj; % nxn
+    
+    vNij=vyij_j.*nitj-vxij_j.*ninj; % nxn
+    vTij=vyij_j.*titj-vxij_j.*tinj; % nxn
+
+    sNij=sNij-diag(diag(sNij))+diag(repmat(pi,1,n));
+    vTij=vTij-diag(diag(vTij))+diag(repmat(pi,1,n));
+
+    vN=sum(vNij')'; % nx1
+    vT=sum(vTij')'; % nx1
+
+    N=[sNij vN];    % nx(n+1)
+    T=[sTij vT];    % nx(n+1)
+
+    [xSorted,indx]=sort(x);
+    t=indx(length(indx));   % 1x1
+
+    Mnp1_row=T(t,:)+T((t+1),:); % 1x(n+1)
+
+    M=[N;Mnp1_row];   % (n+1)x(n+1)
+
+    Ux=U.*cos(aoa);   % 1x1
+    Uy=U.*sin(aoa);   % 1x1
+
+    bi=-(Ux.*nx+Uy.*ny);    % nx1
+    bnp1=-(Ux.*(tx(t)+tx(t+1))+Uy.*(ty(t)+ty(t+1)));    % 1x1
+
+    b=[bi;bnp1];    % (n+1)x1
+
+    a=M^-1*b;   % (n+1)x1
+
+    vni=N*a+(Ux.*nx+Uy.*ny);    % nx1 (=0)
+    vti=T*a+(Ux.*tx+Uy.*ty);    % nx1 (!=0)
+
+   Cpi=1-(vti./U).^2;  % nx1
+
+   TotalGamma=2*pi*a(n+1)*sum(s);
+   c=x(t);
+   L1=1.225*U*TotalGamma; 
+   cL=L1/(0.5*1.225*(U^2)*c);
+
+
+
+hold on
+box on
+
+cpiplot1(1)=plot(xc(2:t),Cpi(2:t,1),'r','LineWidth',1.5);
+cpiplot1(2)=plot([ xc(t:end);xc(1)],[ Cpi(t:end,1); Cpi(1,1)],'b','LineWidth',1.5);
+cpiplot2(4)=plot([0,100],[0,0],'Color',[0.5020         0         0],'LineWidth',1.5);
+cpiplot2(2)=ylabel('C_p');
+
+
+v=axis;
+set(gca,'XTick',0:5:100)
+d=abs(v(4)-v(3))/20;
+d=d-mod(d,0.01);
+set(gca,'YTick',v(3):d:v(4))
+
+cpiplot2(1)=xlabel('X \rightarrow');
+cpiplot2(3)=title(['C_p Distribution of ' bodyname]);
+legend('Upper Surface', 'Lower Surface','Location','NorthEast' )
+
+grid on
+
+
+
 
 %% Plot Formatting and Etc. 
 
