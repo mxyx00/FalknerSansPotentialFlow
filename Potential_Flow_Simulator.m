@@ -382,10 +382,14 @@ legend('Upper Surface', 'Lower Surface','Location','NorthEast' )
 
 grid on
 
+x(end)=[];
+y(end)=[];
+
+x(end)=[];
+y(end)=[];
+
 if mod(resolution,2) == 0
-    x = "even"
     cutoffpoint = (length(xy)+1)/2;
-    xy
     firsthalf = flip(xy(1:cutoffpoint,:))
     secondhalf = xy(cutoffpoint+1:end,:)
 else
@@ -400,25 +404,25 @@ dist2 = vecnorm((diff(secondhalf,1,1)), 2, 2);
 
 
 %Parameterize x and y coordinates
-abscissa1 = [0; cumsum(dist1)]
-abscissa2 = [0; cumsum(dist2)]
+abscissa1 = [0; cumsum(dist1)];
+abscissa2 = [0; cumsum(dist2)];
 
 
 %Compute spline coefficients
-pp1 = spline(abscissa1, flip(firsthalf',2));
-pp2 = spline(abscissa2, flip(secondhalf',2));
+pp1 = pchip(abscissa1, flip(firsthalf',2));
+pp2 = pchip(abscissa2, flip(secondhalf',2));
 
 %Resample
 
 %% NOTE - Had to rename this to yyy as "yy" is used in computing airflow later.
-yyy1 = ppval(pp1, linspace(abscissa1(1), abscissa1(end), resolution));
-yyy2 = ppval(pp2, linspace(abscissa2(1), abscissa2(end), resolution));
+yyy1 = ppval(pp1, linspace(abscissa1(1), abscissa1(end), resolution/2));
+yyy2 = ppval(pp2, linspace(abscissa2(1), abscissa2(end), resolution/2));
 
 
 %logspace towards leading and trailing
 
-x = [flip(yyy1(1,:))]'*100 + [yyy2(1,:)]'*100;
-y = [flip(yyy1(2,:))]'*100 + [yyy2(2,:)]'*100;
+x = [yyy1(1,:),flip(yyy2(1,:))]'*100
+y = [yyy1(2,:),flip(yyy2(2,:))]'*100;
 
 n = length(x);
 
