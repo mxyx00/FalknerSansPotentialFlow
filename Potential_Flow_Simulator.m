@@ -68,7 +68,10 @@ xy = [x,y];
 
 % Splitting the airfoil points so they are symmetrical.
 tophalf = flip(xy(1:LE-1,:));
+size(tophalf)
 bottomhalf = xy(LE:end,:); 
+size(bottomhalf)
+
 %Compute the cumulative distance along the contour
 dist1 = vecnorm((diff(tophalf,1,1)), 2, 2); %xy
 dist2 = vecnorm((diff(bottomhalf,1,1)), 2, 2);
@@ -95,7 +98,7 @@ n = length(xPlot);
 %% Panel Plot
 % Creates a plot with the airfoil and it's panels. Collocation points at
 % the center of each panel. 
-subplot(3,1,1)
+subplot(2,1,1)
 AF_F1=zeros(n,1);
 hold on
 count_even=0;
@@ -160,9 +163,9 @@ ty=(y-yL)./s;	% nx1
 nx=-ty;	% nx1
 ny=tx;	% nx1
   
-subplot(3,1,2)
-    xT=x*cos(aoa)+y*sin(aoa);
-    yT=-x*sin(aoa)+y*cos(aoa);
+subplot(2,1,2)
+    xT=x.*cos(aoa)+y.*sin(aoa);
+    yT=-x.*sin(aoa)+y.*cos(aoa);
     
     left=-round(2.5*n);
     right=100+round(2.5*n);
@@ -365,7 +368,7 @@ subplot(3,1,2)
         vxT(:,j)=vx(:,j)*cos(aoa)+vy(:,j)*sin(aoa);
         vyT(:,j)=-vx(:,j)*sin(aoa)+vy(:,j)*cos(aoa);
 
-        if xxcT(2,j)>min(xT) & xxcT(2,j)<max(xT)
+        if xxcT(2,j)>min(xT) && xxcT(2,j)<max(xT)
             handles.VP2(j)=quiver(xxcT(:,j),yycT(:,j),vxT(:,j),vyT(:,j),14/n,'b'); % vertical line vectors
         else
             handles.VP2(j)=quiver(xxcT(:,j),yycT(:,j),vxT(:,j),vyT(:,j),8/n,'b'); % vertical line vectors
@@ -373,7 +376,7 @@ subplot(3,1,2)
             
     end
     
-        VP4=quiver(xxcT,yycT,vxT,vyT,1.25,'b'); %
+    handles.VP4=quiver(xxcT,yycT,vxT,vyT,0.8,'b'); %
 
     
     VP3(:,:)=fill([xT;xT(1)],[yT;yT(1)],[0.5020         0    0.2510]);
@@ -385,7 +388,8 @@ subplot(3,1,2)
 
 %% Pressure
 
-subplot(3,1,3)
+figure()
+subplot(2,1,1)
 
 dxij_j=repmat(xc,1,n)-repmat(xc',n,1);	% nxn
 dyij_j=repmat(yc,1,n)-repmat(yc',n,1);  % nxn
@@ -433,17 +437,18 @@ bnp1=-(Ux.*(tx(t)+tx(t+1))+Uy.*(ty(t)+ty(t+1)));    % 1x1
 
 b=[bi;bnp1];    % (n+1)x1
 
-a=M^-1*b;   % (n+1)x1
+AA=M^-1*B;   % (n+1)x1
 
-vni=N*a+(Ux.*nx+Uy.*ny);    % nx1 (=0)
-vti=T*a+(Ux.*tx+Uy.*ty);    % nx1 (!=0)
+vni=N*AA+(Ux.*nx+Uy.*ny);    % nx1 (=0)
+vti=T*AA+(Ux.*tx+Uy.*ty);    % nx1 (!=0)
 
-Cpi(:,i)=1-(vti./U).^2;  % nx1
+Cpi=(vti./U).^2;  % nx1
 
 
-TotalGamma=2*pi*a(n+1)*sum(s);
+TotalGamma=2*pi*AA(n+1)*sum(s);
 c=x(t);
 L1=1.225*U*TotalGamma; 
+cL=L1/(0.5*1.225*(U^2)*c);
 
 
 axis equal
@@ -451,25 +456,41 @@ hold on
 box on
 
 Cpi=fliplr(Cpi);
+cL=fliplr(cL);
 
+cpiplot1(1)=plot(xc(2:t),Cpi(2:t,1),'r','LineWidth',1.5);
+cpiplot1(2)=plot([ xc(t:end); xc(1)],[ Cpi(t:end,1); Cpi(1,1)],'b','LineWidth',1.5);
+cpiplot2(4)=plot([0,100],[0,0],'Color','k','LineWidth',1.5);
+pbaspect([5 2 1])
 
-cpiplot1(1)=plot(xc(2:t),Cpi(2:t,i),'r','LineWidth',1.5);
-cpiplot1(2)=plot([ xc(t:end); xc(1)],[ Cpi(t:end,i); Cpi(1,i)],'b','LineWidth',1.5);
-cpiplot2(4)=plot([0,100],[0,0],'Color',[0.5020         0         0],'LineWidth',1.5);
 
 cpiplot2(2)=ylabel('C_p');
 
 
 v=axis;
-set(gca,'XTick',0:5:100)
+set(gca,'XTick',0:1:100)
 d=abs(v(4)-v(3))/20;
 d=d-mod(d,0.01);
 set(gca,'YTick',v(3):d:v(4))
+
 
 cpiplot2(1)=xlabel('X \rightarrow');
 cpiplot2(3)=title(['C_p Distribution of ' bodyname]);
 legend('Upper Surface', 'Lower Surface','Location','NorthEast' )
 
+
+%% Pressure Gradient Plot
+
+subplot(2,1,2)
+s = sqrt(xc.^2+yc.^2);
+psi1 = gradient(Cpi(2:t,1),s(2:t));
+psi2 = gradient([ Cpi(t:end,1); Cpi(1,1)],[s(t:end);s(1)]);
+plot(s(2:t),psi1,'r','LineWidth',1.5)
+hold on
+plot([s(t:end);s(1)],psi2,'b','LineWidth',1.5)
+xlabel('X \rightarrow');
+title(['Pressure gradient with respect to distance of ' bodyname]);
+legend('Upper Surface', 'Lower Surface','Location','NorthEast' )
 grid on
 
 
