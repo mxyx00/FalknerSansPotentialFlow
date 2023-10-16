@@ -451,7 +451,6 @@ L1=1.225*U*TotalGamma;
 cL=L1/(0.5*1.225*(U^2)*c);
 
 
-axis equal
 hold on
 box on
 
@@ -468,8 +467,8 @@ cpiplot2(2)=ylabel('C_p');
 
 
 v=axis;
-set(gca,'XTick',0:1:100)
-d=abs(v(4)-v(3))/20;
+set(gca,'XTick',0:5:100)
+d=abs(v(4)-v(3))/10;
 d=d-mod(d,0.01);
 set(gca,'YTick',v(3):d:v(4))
 
@@ -477,6 +476,7 @@ set(gca,'YTick',v(3):d:v(4))
 cpiplot2(1)=xlabel('X \rightarrow');
 cpiplot2(3)=title(['C_p Distribution of ' bodyname]);
 legend('Upper Surface', 'Lower Surface','Location','NorthEast' )
+pbaspect([7 2 1])
 
 
 %% Pressure Gradient Plot
@@ -492,14 +492,4 @@ xlabel('X \rightarrow');
 title(['Pressure gradient with respect to distance of ' bodyname]);
 legend('Upper Surface', 'Lower Surface','Location','NorthEast' )
 grid on
-
-
-
-
-
-
-
-
-
-
-
+pbaspect([7 2 1])
