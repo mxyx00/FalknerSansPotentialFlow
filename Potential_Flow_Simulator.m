@@ -1,4 +1,4 @@
-function potentialFlowPlot = panelCode(airfoil,aoa,velocity, resolution)
+function [m,beta] = panelCode(airfoil,aoa,velocity, resolution)
 
 %Inputs: Airfoil Data, Angle of Attack (degrees), Flow velocity (m/s),
 %Resolution (n)
@@ -36,6 +36,7 @@ xy=cell2mat(xycell); %
 fclose(fid);
 bodyname=textread(airfoil,'%s',1,'delimiter','\n');
 
+
 %% Preliminary Calculations
 % Converting aoa from degrees to radians. Removing double-used points such
 % as LE and TE, re-sorting direction of vector.
@@ -61,7 +62,7 @@ y=[flipud(y(1:LE)); flipud(y(LE:end))]*100;
 % x(end)=[];
 % y(end)=[];
 
-xy = [x,y]
+xy = [x,y];
 
 % Parameterization
 % Using spline function and cummulative distance in order to create an
@@ -69,20 +70,18 @@ xy = [x,y]
 % other.
 
 % Splitting the airfoil points so they are symmetrical.
-dist = vecnorm(diff(xy,1,1), 2, 2);
+dist = vecnorm(diff(xy, 1, 1), 2, 2);
 
 %Parameterize x and y coordinates
 abscissa = [0; cumsum(dist)];
 
 %Compute spline coefficients
+
 pp = spline(abscissa, flip(xy',2));
-suction = flip(coord(0, abscissa(LE),resolution/2)); % Spacing
-pressure = coord(abscissa(end),abscissa(LE),resolution/2); % Spacing
-
-
+suction = flip(coord(0, abscissa(LE),resolution)); % Spacing
+pressure = coord(abscissa(end),abscissa(LE),resolution); % Spacing 
 abscissa = [flip(suction), flip(pressure(1:end-1))]
-
-fitSpline = flip(ppval(pp,abscissa),2);
+fitSpline = flip(ppval(pp,abscissa),2); % coord 
 
 xPlot = fitSpline(1,:)';
 yPlot = fitSpline(2,:)';
@@ -142,7 +141,7 @@ legend([AF_F1(1),AF_F1(2),AF_F2],'Panels','Panels',leg3,'Location','NorthEast');
 x = xPlot(1:end-1);
 y = yPlot(1:end-1);
 
-xy = [x,y];
+xy = [x,y]
 
 n = length(x);
 i = n;
@@ -387,125 +386,10 @@ subplot(2,1,2)
     axis(Focussed)
     zoom reset
 
-%% Pressure
-
-figure()
-subplot(2,1,1)
-
-% Testing
-aoa=0;
-xy=cell2mat(xycell)
-x=xy(:,1);
-y=xy(:,2);
-x(end)=[];
-y(end)=[];
-LE=find(x==min(abs(x)));
-x=[flipud(x(1:LE)); flipud(x(LE:end))]*100;
-y=[flipud(y(1:LE)); flipud(y(LE:end))]*100;
-x(end)=[];
-y(end)=[];
-n=length(x);		% 1x1
-t=find(x==max(x));
-c=x(t);
-xL=[x(n) ; x(1:(n-1))];	% nx1
-yL=[y(n) ; y(1:(n-1))];	% nx1
-xc=(xL+x)./2;		% nx1
-yc=(yL+y)./2;
-s=((x-xL).^2+(y-yL).^2).^0.5;	% nx1
-tx=(x-xL)./s;	% nx1
-ty=(y-yL)./s;	% nx1
-nx=-ty;	% nx1
-ny=tx;
-% End of testing
-
-dxij_j=repmat(xc,1,n)-repmat(xc',n,1);	% nxn
-dyij_j=repmat(yc,1,n)-repmat(yc',n,1);  % nxn
-
-xij_j=dxij_j.*(repmat(tx',n,1))+dyij_j.*(repmat(ty',n,1));	% nxn
-yij_j=dxij_j.*(repmat(nx',n,1))+dyij_j.*(repmat(ny',n,1));	% nxn
-
-ss=repmat(s',n,1);	% nxn
-
-vxij_j=0.5.*(log((xij_j+0.5.*ss).^2+yij_j.^2)-log((xij_j-0.5.*ss).^2+yij_j.^2));    % nxn
-vyij_j=atan((xij_j+0.5.*ss)./yij_j)-atan((xij_j-0.5.*ss)./yij_j);   % nxn
-
-nitj=(nx*tx')+(ny*ty'); % nxn
-ninj=(nx*nx')+(ny*ny'); % nxn
-titj=(tx*tx')+(ty*ty'); % nxn
-tinj=(tx*nx')+(ty*ny'); % nxn
-
-sNij=vxij_j.*nitj+vyij_j.*ninj; % nxn
-sTij=vxij_j.*titj+vyij_j.*tinj; % nxn
-
-vNij=vyij_j.*nitj-vxij_j.*ninj; % nxn
-vTij=vyij_j.*titj-vxij_j.*tinj; % nxn
-
-sNij=sNij-diag(diag(sNij))+diag(repmat(pi,1,n));
-vTij=vTij-diag(diag(vTij))+diag(repmat(pi,1,n));
-
-vN=sum(vNij')'; % nx1
-vT=sum(vTij')'; % nx1
-
-N=[sNij vN];    % nx(n+1)
-T=[sTij vT];    % nx(n+1)
-
-[xSorted,indx]=sort(x);
-t=indx(length(indx));   % 1x1
-
-Mnp1_row=T(t,:)+T((t+1),:); % 1x(n+1)
-
-M=[N;Mnp1_row];   % (n+1)x(n+1)
-
-Ux=U.*cos(aoa);   % 1x1
-Uy=U.*sin(aoa);   % 1x1
-
-bi=-(Ux.*nx+Uy.*ny);    % nx1
-bnp1=-(Ux.*(tx(t)+tx(t+1))+Uy.*(ty(t)+ty(t+1)));    % 1x1
-
-b=[bi;bnp1];    % (n+1)x1
-
-a=M^-1*b;   % (n+1)x1
-
-vni=N*a+(Ux.*nx+Uy.*ny);    % nx1 (=0)
-vti=T*a+(Ux.*tx+Uy.*ty);    % nx1 (!=0)
-
-Cpi(:,1)=(vti./U).^2;  % nx1
-
-TotalGamma=2*pi*a(n+1)*sum(s);
-c=x(t);
-L1=1.225*U*TotalGamma; 
-cL=L1/(0.5*1.225*(U^2)*c);
-
-
-hold on
-box on
-
-Cpi=fliplr(Cpi)
-cL=fliplr(cL);
-
-cpiplot1(1)=plot(xc(2:t),Cpi(2:t,1),'r','LineWidth',1.5);
-cpiplot1(2)=plot([ xc(t:end); xc(1)],[ Cpi(t:end,1); Cpi(1,1)],'b','LineWidth',1.5);
-cpiplot2(4)=plot([0,100],[0,0],'Color',[0.5020         0         0],'LineWidth',1.5);
-
-cpiplot2(2)=ylabel('C_p');
-
-
-v=axis;
-set(gca,'XTick',0:5:100)
-d=abs(v(4)-v(3))/10;
-d=d-mod(d,0.01);
-set(gca,'YTick',v(3):d:v(4))
-
-
-cpiplot2(1)=xlabel('X \rightarrow');
-cpiplot2(3)=title(['C_p Distribution of ' bodyname]);
-legend('Upper Surface', 'Lower Surface','Location','NorthEast' )
-pbaspect([7 2 1])
-
 
 %% Pressure Gradient Plot
 
-subplot(2,1,2)
+figure()
 s = sqrt(xc.^2+yc.^2);
 psi1 = gradient(Cpi(2:t,1),s(2:t));
 psi2 = gradient([ Cpi(t:end,1); Cpi(1,1)],[s(t:end);s(1)]);
@@ -516,7 +400,34 @@ xlabel('X \rightarrow');
 title(['Pressure gradient with respect to distance of ' bodyname]);
 legend('Upper Surface', 'Lower Surface','Location','NorthEast' )
 grid on
-pbaspect([7 2 1])
+pbaspect([5 2 1])
+
+
+% CALCULATING M + BETA
+
+% for leading edge 
+beta = zeros(1,129);
+m = zeros(1,129);
+
+A=[x(2),y(2)]-[x(1),y(1)];
+B=[x(end),y(end)]-[x(1),y(1)];
+
+beta(1)=acos(sum(A.*B)/(norm(A)*norm(B)));
+
+m(1) = beta/((2*pi)-beta);
+
+% every other panel 
+for i = 3:130
+    A=[x(i),y(i)]-[x(i-1),y(i-1)];
+    B=[x(i),y(i-1)]-[x(i-1),y(i-1)];
+    
+    beta(i-1)=acos(sum(A.*B)/(norm(A)*norm(B)));
+    
+    m(i-1) = beta(i-1)./((2*pi)-beta(i-1));
+end
+
+
+%% Ext 
 
 function point = coord(a,b,N)
     point = a + (b-a)*fStretch(N);
