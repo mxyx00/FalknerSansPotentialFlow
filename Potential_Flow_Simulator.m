@@ -1,4 +1,4 @@
-function [empty] = panelCode(airfoil,aoa,velocity, resolution)
+function [separation] = panelCode(airfoil,aoa,velocity, resolution)
 
 %Inputs: Airfoil Data, Angle of Attack (degrees), Flow velocity (m/s),
 %Resolution (n)
@@ -682,39 +682,54 @@ m(1) = beta/((2*pi)-beta);
 
 % every other panel 
 for i = 3:(len)
-    A=[x(i),y(i)]-[x(i-1),y(i-1)];
-    B=[x(i),y(i-1)]-[x(i-1),y(i-1)];
-    
-    beta(i-1)=acos(sum(A.*B)/(norm(A)*norm(B)));
-    
+    if y(i) > y(i-1)
+        A=[x(i),y(i)]-[x(i-1),y(i-1)];
+        B=[x(i),y(i-1)]-[x(i-1),y(i-1)];
+        beta(i-1)=acos(sum(A.*B)/(norm(A)*norm(B)));
+    elseif y(i) < y(i-1)
+        A=[x(i),y(i)]-[x(i-1),y(i-1)];
+        B=[x(i),y(i-1)]-[x(i-1),y(i-1)];
+        beta(i-1)=-acos(sum(A.*B)/(norm(A)*norm(B)));
+    end
     m(i-1) = beta(i-1)./((2*pi)-beta(i-1));
 end
 
 %trailing edge index
 te = find(x==100);
 rangedbeta = beta(1:40);
-separation = find(rangedbeta==min(rangedbeta));
+p1 = find(rangedbeta==min(abs(rangedbeta)));
+p2 = p1 + 1;
+% since the actual point is in the middle of this one and the next
+separation = (x(p1)+x(p2))/2
 
 
 plot(x(1:66),beta(1:66));
 hold on
 plot(x(1:66),m(1:66));
 
-separationOccurs = xline(x(separation),'LineWidth',1);
+separationOccurs = (xline(separation,'LineWidth',1));
 separationOccurs.LineStyle = '--';
 dim = [.38 .4 .3 .3];
-str = ['Separation Occurs at x=' int2str(x(separation))]
+str = ['Separation Occurs at x=' int2str(separation)];
 annotation('textbox',dim,'String',str,'FitBoxToText','on');
-
 
 
 title("Beta & M vs. X (Upper side)")
 legend('Beta','M')
 
 % Beta as function of deriv. pressure/distance(s)
+figure()
+beta = zeros(1,len);
+m = zeros(1,len);
 
+for i = 1:len
+    beta(i) = CpAirfoil(i)/s(i);
+    m(i) = beta(i)./((2*pi)-beta(i));
+end
 
-
+plot(x(1:66),beta(1:66));
+hold on
+plot(x(1:66),m(1:66));
 
 %% Ext Functions
 
