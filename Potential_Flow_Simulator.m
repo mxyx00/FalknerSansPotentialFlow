@@ -42,6 +42,7 @@ bodyname=textread(airfoil,'%s',1,'delimiter','\n');
 % as LE and TE, re-sorting direction of vector.
 
 U = velocity; % free stream velocity
+aoad = aoa
 aoa=aoa*pi/180; %Converting angle of attack to radians. 
 
 % Separating coordinates into x and y columns.
@@ -408,7 +409,7 @@ xycell = textscan(fid, '%f %f','headerlines', 1); % Skipping titles and text
 airfoil=cell2mat(xycell); % 
 fclose(fid);
 numPanels = 131;
-alpha = 0;
+alpha = aoad
 numXGrid = 140;
 numYGrid = 140;
 
@@ -673,63 +674,81 @@ len = length(airfoil)-2;
 beta = zeros(1,len);
 m = zeros(1,len);
 
-A=[x(2),y(2)]-[x(1),y(1)];
-B=[x(end),y(end)]-[x(1),y(1)];
+% A=[x(2),y(2)]-[x(1),y(1)];
+% B=[x(end),y(end)]-[x(1),y(1)];
+% 
+% beta(1)=acos(sum(A.*B)/(norm(A)*norm(B)));
+% 
+% m(1) = beta/((2*pi)-beta);
+% 
+% % every other panel 
+% for i = 3:(len)
+%     if y(i) > y(i-1)
+%         A=[x(i),y(i)]-[x(i-1),y(i-1)];
+%         B=[100,0]-[0,0];
+%         beta(i-1)=acos(sum(A.*B)/(norm(A)*norm(B)));
+%     elseif y(i) < y(i-1)
+%         A=[x(i),y(i)]-[x(i-1),y(i-1)];
+%         B=[100,0]-[0,0];
+%         beta(i-1)=-acos(sum(A.*B)/(norm(A)*norm(B)));
+%     end
+%     m(i-1) = beta(i-1)./((2*pi)-beta(i-1));
+% end
+% 
+% %trailing edge index
+te = find(x==100)
 
-beta(1)=acos(sum(A.*B)/(norm(A)*norm(B)));
-
-m(1) = beta/((2*pi)-beta);
-
-% every other panel 
-for i = 3:(len)
-    if y(i) > y(i-1)
-        A=[x(i),y(i)]-[x(i-1),y(i-1)];
-        B=[x(i),y(i-1)]-[x(i-1),y(i-1)];
-        beta(i-1)=acos(sum(A.*B)/(norm(A)*norm(B)));
-    elseif y(i) < y(i-1)
-        A=[x(i),y(i)]-[x(i-1),y(i-1)];
-        B=[x(i),y(i-1)]-[x(i-1),y(i-1)];
-        beta(i-1)=-acos(sum(A.*B)/(norm(A)*norm(B)));
-    end
-    m(i-1) = beta(i-1)./((2*pi)-beta(i-1));
-end
-
-%trailing edge index
-te = find(x==100);
-rangedbeta = beta(1:40);
-p1 = find(rangedbeta==min(abs(rangedbeta)));
-p2 = p1 + 1;
-% since the actual point is in the middle of this one and the next
-separation = (x(p1)+x(p2))/2
-
-
-plot(x(1:66),beta(1:66));
-hold on
-plot(x(1:66),m(1:66));
-
-separationOccurs = (xline(separation,'LineWidth',1));
-separationOccurs.LineStyle = '--';
-dim = [.38 .4 .3 .3];
-str = ['Separation Occurs at x=' int2str(separation)];
-annotation('textbox',dim,'String',str,'FitBoxToText','on');
+% 
+% 
+% line1 = plot(x(1:te),beta(1:te));
+% hold on
+% line2 = plot(x(1:te),m(1:te));
+% 
 
 
-title("Beta & M vs. X (Upper side)")
-legend('Beta','M')
 
 % Beta as function of deriv. pressure/distance(s)
-figure()
-beta = zeros(1,len);
-m = zeros(1,len);
 
-for i = 1:len
-    beta(i) = CpAirfoil(i)/s(i);
-    m(i) = beta(i)./((2*pi)-beta(i));
+beta = zeros(1,te);
+m = zeros(1,te);
+
+CpUpper = CpAirfoil(midIndS+1 : end);
+
+
+dCpdx = gradient(CpUpper(1:te-1))./gradient(x(1:te-1));
+dCpds = gradient(CpUpper(1:te-1))./gradient(s(1:te-1));
+
+
+for i = 1:te-1
+     m(i) = -(0.5*x(i)*dCpdx(i));
+     syms beta
+     eqn = (beta)/(2*pi-beta) == m(i);
+     b(i) = solve(eqn);
 end
 
-plot(x(1:66),beta(1:66));
+% for i = 1:te-1
+%      m2(i) = -(0.5*s(i)*dCpds(i));
+%      syms beta2
+%      eqn = (beta2)/(2*pi-beta2) == m2(i);
+%      b2(i) = solve(eqn);
+% end
+
+betaSep = -0.199
+intersection=find(betaSep==b);
+
+
+plot(x(1:te),b(1:te));
 hold on
-plot(x(1:66),m(1:66));
+plot(x(1:te-1),m(1:te-1));
+yline(-0.199)
+% separationOccurs = (xline(separation,'LineWidth',1));
+% separationOccurs.LineStyle = '--';
+% dim = [.38 .4 .3 .3];
+% str = ['Separation Occurs at x=' int2str(separation)];
+% annotation('textbox',dim,'String',str,'FitBoxToText','on');
+% plot(x(1:te-1),m2(1:te-1));
+title("Beta & M vs. X (Upper side)")
+legend('Beta', 'M (dCp/dx)')
 
 %% Ext Functions
 
