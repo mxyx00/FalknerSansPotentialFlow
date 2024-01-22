@@ -386,10 +386,12 @@ subplot(2,1,2)
     zoom reset
 
 
+
+
 % Pressure Gradient Plot
 
 figure()
-s = sqrt(xc.^2+yc.^2);
+s=((x-xL).^2+(y-yL).^2).^0.5;
 psi1 = gradient(Cpi(2:t,1),s(2:t));
 psi2 = gradient([ Cpi(t:end,1); Cpi(1,1)],[s(t:end);s(1)]);
 plot(s(2:t),psi1,'r','LineWidth',1.5)
@@ -460,7 +462,7 @@ phi  = phiDeg.*(pi/180);
 delta = deltaDeg * (pi/180);
 beta = betaDeg.*(pi/180);                                                 
 
-Vinf = 1;
+Vinf = U;
 
 % Find the normal (I) and tangential (J) geometric integrals for the source
 % panel method. 
@@ -713,41 +715,51 @@ beta = zeros(1,te);
 m = zeros(1,te);
 
 CpUpper = CpAirfoil(midIndS+1 : end);
+s2 = [0,0]
+for i = 2:te
+    distance = (sqrt((y(i)-y(i-1))^2+(x(i)-x(i-1))^2));
+    s2(i) = s2(i-1) + distance;
+end
 
 
-dCpdx = gradient(CpUpper(1:te-1))./gradient(x(1:te-1));
-dCpds = gradient(CpUpper(1:te-1))./gradient(s(1:te-1));
+
+dCpdx = gradient(CpUpper(1:te-1),x(1:te-1));
+dCpds = gradient(CpUpper(1:te-1),s2(1:te-1));
 
 
 for i = 1:te-1
      m(i) = -(0.5*x(i)*dCpdx(i));
-     syms beta
-     eqn = (beta)/(2*pi-beta) == m(i);
-     b(i) = solve(eqn);
+     beta(i) = 2*m(i)/(m(i)+1);
 end
 
-% for i = 1:te-1
-%      m2(i) = -(0.5*s(i)*dCpds(i));
-%      syms beta2
-%      eqn = (beta2)/(2*pi-beta2) == m2(i);
-%      b2(i) = solve(eqn);
-% end
-
-betaSep = -0.199
-intersection=find(betaSep==b);
+for i = 1:te-1
+     m2(i) = -(0.5*s2(i)*dCpds(i));
+     beta2(i) = 2*m2(i)/(m2(i)+1);
+end
 
 
-plot(x(1:te),b(1:te));
+for i = 1:te-1
+    if beta(i) > -0.199
+        sepIndx = beta(i)
+    elseif beta(i) < -0.199
+        break
+    end
+end
+
+pt = find(beta==sepIndx)
+separation = x(pt)
+
+plot(x(1:te-1),beta(1:te-1));
 hold on
 plot(x(1:te-1),m(1:te-1));
 yline(-0.199)
-% separationOccurs = (xline(separation,'LineWidth',1));
-% separationOccurs.LineStyle = '--';
-% dim = [.38 .4 .3 .3];
-% str = ['Separation Occurs at x=' int2str(separation)];
-% annotation('textbox',dim,'String',str,'FitBoxToText','on');
-% plot(x(1:te-1),m2(1:te-1));
-title("Beta & M vs. X (Upper side)")
+separationOccurs = (xline(separation,'LineWidth',1));
+separationOccurs.LineStyle = '--';
+dim = [.38 .4 .3 .3];
+str = ['Separation Occurs at x=' int2str(separation)];
+annotation('textbox',dim,'String',str,'FitBoxToText','on');
+t = ["Beta & M vs. X (Upper side), Angle =" aoad]
+title(t)
 legend('Beta', 'M (dCp/dx)')
 
 %% Ext Functions
